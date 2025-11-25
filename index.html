@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📖 Yadu's Dictionary</title>
+    
+    <link rel="icon" type="image/png" href="favicon.png"> 
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📖 Yadu's Dictionary</h1>
+        
+        <div class="controls">
+            <button id="themeToggle" class="theme-button">☀️ Switch to Dark</button>
+            <input type="text" id="searchInput" placeholder="🔍 Search for a Word...">
+        </div>
+
+        <p id="statusMessage" class="info">Start typing above to search for a word.</p>
+
+        <div id="descriptionArea" class="description-box" style="display:none;">
+            <h3 id="descriptionTitle"></h3>
+            <p id="definitionText"></p>
+            <p id="exampleText" class="example-text"></p>
+            <button id="backButton" class="back-button" style="display:none;">← Back to Results</button>
+        </div>
+
+        <div id="bookTableContainer">
+            <table id="bookTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Word</th>
+                        <th scope="col">Synonyms (Preview)</th>
+                        <th scope="col">Language</th> 
+                    </tr>
+                </thead>
+                <tbody id="bookTableBody">
+                    </tbody>
+            </table>
+        </div>
+        
+    </div>
+    
+    <script src="script.js" defer></script>
+</body>
+</html>
