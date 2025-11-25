@@ -1,22 +1,25 @@
 // ------------------------------------------
 // Configuration
 // ------------------------------------------
-// !!! UPDATE THIS WITH YOUR NEW DICTIONARY SHEET URL !!!
-const GOOGLE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1vujnZVEBTGzsRctZ5rhevnsqdEPMlfdS/edit?usp=drive_link&ouid=107803050628093341974&rtpof=true&sd=true"; 
+// **** NEW GOOGLE SHEET URL ****
+// NOTE: Sheet ID is extracted from your shared link, but you MUST ensure the sheet 
+// is publicly shared and the URL format is correct for CSV export.
+const SHEET_ID = "1vujnZVEBTGzsRctZ5rhevnsqdEPMlfdS";
+const GOOGLE_SHEET_CSV = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
 const TABLE_BODY_ID = 'bookTableBody';
 const SEARCH_INPUT_ID = 'searchInput';
 const STATUS_MESSAGE_ID = 'statusMessage';
 const DESCRIPTION_AREA_ID = 'descriptionArea';
 const DESCRIPTION_TITLE_ID = 'descriptionTitle';
-// New/Updated IDs for Dictionary elements:
-const DEFINITION_TEXT_ID = 'definitionText'; // Renamed from DESCRIPTION_TEXT_ID
-const EXAMPLE_TEXT_ID = 'exampleText';      // New ID for example sentence
+const DEFINITION_TEXT_ID = 'definitionText'; // Renamed element
+const EXAMPLE_TEXT_ID = 'exampleText';      // New element
 const THEME_TOGGLE_ID = 'themeToggle';
 const BACK_BUTTON_ID = 'backButton';
-const THEME_STORAGE_KEY = 'dictionaryTheme'; // Changed storage key
+const THEME_STORAGE_KEY = 'dictionaryTheme'; 
 
 // Define standardized display columns (uses normalized keys)
+// These keys must match the normalized headers in your sheet (word, synonyms, language)
 const DISPLAY_COLUMNS = [
     { key: 'word', label: 'Word' },
     { key: 'synonyms', label: 'Synonyms (Preview)' },
@@ -27,7 +30,7 @@ let dictionaryData = []; // Renamed from bookData
 let lastFilterResults = []; 
 
 // ------------------------------------------
-// Utility Functions (No Change)
+// Utility Functions
 // ------------------------------------------
 
 function debounce(func, delay) {
@@ -50,12 +53,12 @@ function normalizeHeader(header) {
         .replace(/\s(.)/g, (match, char) => char.toUpperCase());
 }
 
+
 // ------------------------------------------
 // Data Fetching and Parsing Functions
 // ------------------------------------------
 
 async function fetchCSVData() {
-    // ... (logic is the same)
     const status = document.getElementById(STATUS_MESSAGE_ID);
     try {
         const response = await fetch(GOOGLE_SHEET_CSV); 
@@ -65,7 +68,7 @@ async function fetchCSVData() {
         }
         return await response.text();
     } catch (error) {
-        status.textContent = `⚠️ Failed to load data. Check your Google Sheet link or network: ${error.message}`;
+        status.textContent = `⚠️ Failed to load data. Check your Google Sheet URL or network: ${error.message}`;
         status.className = 'error';
         console.error("Fetch Error:", error);
         return null;
@@ -94,7 +97,7 @@ function parseCSV(csvText) {
                 const cleanValue = value.replace(/^"|"$/g, '').trim(); 
                 entry[headers[index]] = cleanValue; 
             });
-            // CRITICAL CHANGE: Check if the 'word' exists
+            // Ensure we only include entries that have a 'word'
             if (entry.word) {
                 entry.id = i; 
                 data.push(entry);
@@ -105,24 +108,49 @@ function parseCSV(csvText) {
 }
 
 // ------------------------------------------
-// Theme Functions (Unchanged)
+// Theme Functions
 // ------------------------------------------
 
-// (toggleTheme and loadTheme functions remain exactly the same)
+function toggleTheme() {
+    const body = document.body;
+    const button = document.getElementById(THEME_TOGGLE_ID);
+    
+    const isDark = body.classList.toggle('dark-theme');
+
+    if (isDark) {
+        button.innerHTML = '🌙 Switch to Light';
+        localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    } else {
+        button.innerHTML = '☀️ Switch to Dark';
+        localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    }
+}
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    const button = document.getElementById(THEME_TOGGLE_ID);
+    const body = document.body;
+
+    if (savedTheme === 'dark') {
+        body.classList.add('dark-theme');
+        button.innerHTML = '🌙 Switch to Light';
+    } else {
+        body.classList.remove('dark-theme');
+        button.innerHTML = '☀️ Switch to Dark';
+    }
+}
+
 
 // ------------------------------------------
 // Table & Description Management
 // ------------------------------------------
 
-/**
- * CRITICAL CHANGE: Updated to handle dictionary keys (word, definition, example).
- */
 function handleWordSelect(entry, selectedRow) {
     const tbody = document.getElementById(TABLE_BODY_ID);
     const backButton = document.getElementById(BACK_BUTTON_ID);
     const tableContainer = document.getElementById('bookTableContainer');
 
-    // Hide all rows except the selected one
+    // 1. Hide all rows except the selected one
     Array.from(tbody.children).forEach(row => {
         row.classList.remove('selected-row');
         if (row !== selectedRow) {
@@ -133,15 +161,15 @@ function handleWordSelect(entry, selectedRow) {
         }
     });
 
+    // 2. Hide the entire table container
     tableContainer.style.display = 'none';
 
-    // Display the definition area (formerly description area)
+    // 3. Display the definition area
     const titleElement = document.getElementById(DESCRIPTION_TITLE_ID);
     const definitionElement = document.getElementById(DEFINITION_TEXT_ID);
-    const exampleElement = document.getElementById(EXAMPLE_TEXT_ID); // New element
+    const exampleElement = document.getElementById(EXAMPLE_TEXT_ID); 
     const area = document.getElementById(DESCRIPTION_AREA_ID);
 
-    // Use normalized keys: word, definition, example
     titleElement.textContent = `📜 ${entry.word}`;
     
     let definition = entry.definition || "No definition available."; 
@@ -149,12 +177,11 @@ function handleWordSelect(entry, selectedRow) {
     
     let example = entry.example || "";
     if (example) {
-        exampleElement.innerHTML = `**Example:** ${example}`;
+        exampleElement.textContent = example;
         exampleElement.style.display = 'block';
     } else {
         exampleElement.style.display = 'none';
     }
-
 
     area.style.display = 'block';
     backButton.style.display = 'inline-block'; 
@@ -168,17 +195,20 @@ function resetTable() {
     const area = document.getElementById(DESCRIPTION_AREA_ID);
     const backButton = document.getElementById(BACK_BUTTON_ID);
 
+    // 1. Show the table container
     tableContainer.style.display = 'block';
 
+    // 2. Restore all rows 
     Array.from(tbody.children).forEach(row => {
         row.classList.remove('hidden-row');
         row.classList.remove('selected-row');
     });
 
+    // 3. Hide definition area
     area.style.display = 'none';
     backButton.style.display = 'none';
     
-    // Re-render the last search result
+    // 4. Re-render the last search result
     renderTable(lastFilterResults);
 }
 
@@ -206,7 +236,6 @@ function renderTable(dataToDisplay) {
         const row = tbody.insertRow();
         row.style.cursor = 'pointer'; 
         
-        // CRITICAL CHANGE: Call handleWordSelect
         row.addEventListener('click', () => {
             handleWordSelect(entry, row);
         });
@@ -216,7 +245,6 @@ function renderTable(dataToDisplay) {
             const cell = row.insertCell();
             let value = entry[col.key] || '';
             
-            // Simplified rendering since Dictionary usually doesn't need color codes
             cell.textContent = value;
         });
     });
@@ -229,7 +257,7 @@ function renderTable(dataToDisplay) {
 }
 
 /**
- * CRITICAL CHANGE: Filters dictionaryData based on the search query, targeting 'word'.
+ * Filters dictionaryData based on the search query.
  */
 function filterData(query) {
     const queryLower = query.toLowerCase().trim();
@@ -240,6 +268,7 @@ function filterData(query) {
     document.getElementById(BACK_BUTTON_ID).style.display = 'none';
 
     if (!queryLower) {
+        // HIDE table and clear content when search is empty
         document.getElementById(TABLE_BODY_ID).innerHTML = '';
         tableContainer.style.display = 'none';
         status.textContent = "Start typing above to search for a word.";
@@ -248,8 +277,8 @@ function filterData(query) {
         return;
     }
 
-    // CRITICAL CHANGE: Only search against the 'word' field (or similar relevant fields)
     const filtered = dictionaryData.filter(entry => {
+        // Search against the word and synonyms fields
         const wordMatch = entry.word && entry.word.toLowerCase().includes(queryLower);
         const synonymMatch = entry.synonyms && entry.synonyms.toLowerCase().includes(queryLower);
         return wordMatch || synonymMatch;
@@ -285,7 +314,6 @@ async function init() {
     const csvText = await fetchCSVData();
     if (!csvText) return;
 
-    // CRITICAL CHANGE: Use new variable name
     dictionaryData = parseCSV(csvText); 
     
     if (dictionaryData.length > 0) {
@@ -296,7 +324,7 @@ async function init() {
         status.textContent = "Start typing above to search for a word.";
         status.className = 'info';
     } else {
-        status.textContent = `⚠️ Failed to load dictionary entries.`;
+        status.textContent = `⚠️ Failed to load dictionary entries. Check your Google Sheet data.`;
         status.className = 'error';
     }
 }
