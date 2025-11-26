@@ -1,6 +1,7 @@
 // ------------------------------------------
-// Configuration (UNCHANGED)
+// Configuration
 // ------------------------------------------
+// **** CORRECT PUBLIC CSV LINK ****
 const GOOGLE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR1yXM-26NcSPpkrOMGFgvCRwYcFfzcaSSYGiD8mztHs_tJjUXLoFf7F-J2kwEWEw/pub?output=csv";
 
 const TABLE_BODY_ID = 'bookTableBody';
@@ -12,8 +13,10 @@ const DEFINITION_TEXT_ID = 'definitionText';
 const EXAMPLE_TEXT_ID = 'exampleText';
 const THEME_TOGGLE_ID = 'themeToggle';
 const BACK_BUTTON_ID = 'backButton';
+const CONTACT_BUTTON_ID = 'contactButton'; // New ID for the contact button
 const THEME_STORAGE_KEY = 'dictionaryTheme'; 
 
+// Displayed columns and their labels
 const DISPLAY_COLUMNS = [
     { key: 'fromContent', label: 'English' }, 
     { key: 'toContent', label: 'Malayalam' }, 
@@ -24,7 +27,7 @@ let lastFilterResults = [];
 let groupedDictionaryData = {}; 
 
 // ------------------------------------------
-// Utility Functions (UNCHANGED)
+// Utility Functions
 // ------------------------------------------
 
 function debounce(func, delay) {
@@ -48,9 +51,6 @@ function normalizeHeader(header) {
     return normalized;
 }
 
-/**
- * Groups raw dictionary data by the English word ('fromContent'). (UNCHANGED)
- */
 function groupDataByEnglishWord(data) {
     const grouped = {};
     data.forEach(entry => {
@@ -65,9 +65,6 @@ function groupDataByEnglishWord(data) {
     return grouped;
 }
 
-/**
- * Copies the given text to the clipboard. (UNCHANGED)
- */
 function copyWord(word) {
     navigator.clipboard.writeText(word)
         .then(() => {
@@ -77,6 +74,37 @@ function copyWord(word) {
             console.error('Could not copy text: ', err);
             alert('Failed to copy text.');
         });
+}
+
+/**
+ * NEW: Function to display the contact info modal/area
+ */
+function contactMe() {
+    const contactArea = document.getElementById('contactArea');
+    const searchArea = document.getElementById('searchArea');
+    const tableContainer = document.getElementById('bookTableContainer');
+    const descriptionArea = document.getElementById(DESCRIPTION_AREA_ID);
+
+    // Toggle visibility
+    if (contactArea.style.display === 'block') {
+        contactArea.style.display = 'none';
+        searchArea.style.display = 'flex';
+        // Restore table/status if nothing is searched
+        const currentQuery = document.getElementById(SEARCH_INPUT_ID).value.toLowerCase().trim();
+        if (!currentQuery) {
+             document.getElementById(STATUS_MESSAGE_ID).textContent = "Start typing above to search for a word.";
+             document.getElementById(STATUS_MESSAGE_ID).className = 'info';
+        } else {
+             renderTable(lastFilterResults);
+        }
+    } else {
+        contactArea.style.display = 'block';
+        searchArea.style.display = 'none';
+        tableContainer.style.display = 'none';
+        descriptionArea.style.display = 'none';
+        document.getElementById(STATUS_MESSAGE_ID).textContent = "Contact Information";
+        document.getElementById(STATUS_MESSAGE_ID).className = 'info';
+    }
 }
 
 
@@ -169,21 +197,14 @@ function loadTheme() {
 
 
 // ------------------------------------------
-// Table & Description Management
+// Table & Description Management (UNCHANGED)
 // ------------------------------------------
 
-/**
- * Handles selection of a grouped English word, displaying a list of meanings
- * with a copy button next to each meaning.
- * @param {Array} groupedEntries - Array of all sheet entries for the selected word.
- * @param {HTMLElement} selectedRow - The table row element that was clicked.
- */
 function handleWordSelect(groupedEntries, selectedRow) {
     const tbody = document.getElementById(TABLE_BODY_ID);
     const backButton = document.getElementById(BACK_BUTTON_ID);
     const tableContainer = document.getElementById('bookTableContainer');
 
-    // Hide all rows except the selected one
     Array.from(tbody.children).forEach(row => {
         row.classList.remove('selected-row');
         if (row !== selectedRow) {
@@ -203,10 +224,8 @@ function handleWordSelect(groupedEntries, selectedRow) {
 
     const mainWord = groupedEntries[0].fromContent;
     
-    // Title: English word with general copy button
-    titleElement.innerHTML = ` ${mainWord} <button class="copy-button copy-word-button" onclick="copyWord('${mainWord.replace(/'/g, "\\'")}')"> Word</button>`;
+    titleElement.innerHTML = `📜 <span class="english-title-word">${mainWord}</span> <button class="copy-button copy-word-button" onclick="copyWord('${mainWord.replace(/'/g, "\\'")}')">Copy Word</button>`;
     
-    // Aggregate all Malayalam meanings and types
     let allMeanings = [];
     let allTypes = [];
     
@@ -219,16 +238,13 @@ function handleWordSelect(groupedEntries, selectedRow) {
         }
     });
 
-    // ** MODIFIED LOGIC: Create list with individual copy buttons for meanings **
     let meaningListHTML = '';
     if (allMeanings.length > 0) {
-        // Use map to create an array of list items, each containing a copy button
         const listItems = allMeanings.map(meaning => {
-            // Escape single quotes in the string for the onclick function
             const escapedMeaning = meaning.replace(/'/g, "\\'");
             return `<li>
                 ${meaning} 
-                <button class="copy-button copy-meaning-button" onclick="copyWord('${escapedMeaning}')">Copy</button>
+                <button class="copy-button copy-meaning-button" onclick="copyWord('${escapedMeaning}')">📋</button>
             </li>`;
         });
         meaningListHTML = `<ul>${listItems.join('')}</ul>`;
@@ -238,7 +254,6 @@ function handleWordSelect(groupedEntries, selectedRow) {
 
     definitionElement.innerHTML = meaningListHTML;
     
-    // Display all unique types/details
     const uniqueTypes = [...new Set(allTypes)].join(', ') || "N/A";
 
     if (uniqueTypes !== "N/A") {
@@ -281,6 +296,7 @@ function renderTable(keysToDisplay) {
     tbody.innerHTML = ''; 
     document.getElementById(DESCRIPTION_AREA_ID).style.display = 'none'; 
     document.getElementById(BACK_BUTTON_ID).style.display = 'none';
+    document.getElementById('contactArea').style.display = 'none'; // Ensure contact is hidden
 
     lastFilterResults = keysToDisplay; 
 
@@ -319,9 +335,6 @@ function renderTable(keysToDisplay) {
     }
 }
 
-/**
- * Filters dictionaryData based on the search query using EXACT MATCHING. (UNCHANGED)
- */
 function filterData(query) {
     const queryLower = query.toLowerCase().trim();
     const status = document.getElementById(STATUS_MESSAGE_ID);
@@ -329,6 +342,8 @@ function filterData(query) {
 
     document.getElementById(DESCRIPTION_AREA_ID).style.display = 'none';
     document.getElementById(BACK_BUTTON_ID).style.display = 'none';
+    document.getElementById('contactArea').style.display = 'none'; // Ensure contact is hidden
+    document.getElementById('searchArea').style.display = 'flex'; // Ensure search is visible
 
     if (!queryLower) {
         document.getElementById(TABLE_BODY_ID).innerHTML = '';
@@ -355,12 +370,13 @@ function filterData(query) {
 
 
 // ------------------------------------------
-// Initialization (Main Execution) (UNCHANGED)
+// Initialization (Main Execution)
 // ------------------------------------------
 
 function registerEventListeners() {
     document.getElementById(THEME_TOGGLE_ID).addEventListener('click', toggleTheme);
     document.getElementById(BACK_BUTTON_ID).addEventListener('click', resetTable);
+    document.getElementById(CONTACT_BUTTON_ID).addEventListener('click', contactMe); // New event listener
     
     window.copyWord = copyWord; 
     
@@ -375,7 +391,6 @@ async function init() {
     registerEventListeners();
     
     const status = document.getElementById(STATUS_MESSAGE_ID);
-    const tableContainer = document.getElementById('bookTableContainer');
     
     status.textContent = 'Loading dictionary data...';
 
@@ -391,11 +406,14 @@ async function init() {
     if (dictionaryData.length > 0) {
         groupedDictionaryData = groupDataByEnglishWord(dictionaryData);
         
+        // --- CHANGE 1: DO NOT SHOW SUCCESS MESSAGE ---
         document.getElementById(TABLE_BODY_ID).innerHTML = ''; 
-        tableContainer.style.display = 'none';
-
-        status.textContent = `Successfully loaded ${Object.keys(groupedDictionaryData).length} unique English words. Start typing above to search.`;
+        document.getElementById('bookTableContainer').style.display = 'none';
+        
+        // Reset status to initial state
+        status.textContent = "Start typing above to search for a word.";
         status.className = 'info';
+        
     } else {
         status.textContent = `⚠️ Failed to parse dictionary entries. Verify your sheet has 'from_content' and 'to_content' headers.`;
         status.className = 'error';
