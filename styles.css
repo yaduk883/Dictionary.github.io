@@ -1,7 +1,7 @@
 /* --- 1. CSS Variables (The Core of Theming) --- */
 :root {
     /* Light Theme Defaults */
-    --primary-color: #1e88e5; /* Streamlit Blue */
+    --primary-color: #1e88e5; 
     --background-color: #f4f7f6;
     --card-background: #ffffff;
     --text-color: #333;
