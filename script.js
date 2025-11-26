@@ -4,8 +4,7 @@
 // **** NEW GOOGLE SHEET URL ****
 // NOTE: Sheet ID is extracted from your shared link, but you MUST ensure the sheet 
 // is publicly shared and the URL format is correct for CSV export.
-const SHEET_ID = "1vujnZVEBTGzsRctZ5rhevnsqdEPMlfdS";
-const GOOGLE_SHEET_CSV = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+const GOOGLE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR1yXM-26NcSPpkrOMGFgvCRwYcFfzcaSSYGiD8mztHs_tJjUXLoFf7F-J2kwEWEw/pub?output=csv";
 
 const TABLE_BODY_ID = 'bookTableBody';
 const SEARCH_INPUT_ID = 'searchInput';
