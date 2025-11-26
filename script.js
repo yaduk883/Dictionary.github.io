@@ -23,6 +23,7 @@ const DISPLAY_COLUMNS = [
 
 let dictionaryData = []; 
 let lastFilterResults = []; 
+let groupedDictionaryData = {}; // New object for grouped data
 
 // ------------------------------------------
 // Utility Functions
@@ -52,6 +53,38 @@ function normalizeHeader(header) {
     return normalized;
 }
 
+/**
+ * Groups raw dictionary data by the English word ('fromContent').
+ * The result is an object where keys are English words, and values are arrays of entries.
+ */
+function groupDataByEnglishWord(data) {
+    const grouped = {};
+    data.forEach(entry => {
+        const key = entry.fromContent;
+        if (key) {
+            if (!grouped[key]) {
+                grouped[key] = [];
+            }
+            grouped[key].push(entry);
+        }
+    });
+    return grouped;
+}
+
+/**
+ * Copies the given text to the clipboard.
+ */
+function copyWord(word) {
+    navigator.clipboard.writeText(word)
+        .then(() => {
+            alert(`"${word}" copied to clipboard!`);
+        })
+        .catch(err => {
+            console.error('Could not copy text: ', err);
+            alert('Failed to copy text.');
+        });
+}
+
 
 // ------------------------------------------
 // Data Fetching and Parsing Functions
@@ -74,9 +107,6 @@ async function fetchCSVData() {
     }
 }
 
-/**
- * Parses the CSV text into an array of dictionary objects, using normalized keys.
- */
 function parseCSV(csvText) {
     const lines = csvText.trim().split('\n');
     if (lines.length === 0) return [];
@@ -84,14 +114,12 @@ function parseCSV(csvText) {
     const rawHeaders = lines[0].split(',').map(header => header.replace(/"/g, '').trim());
     const headers = rawHeaders.map(normalizeHeader);
     
-    // Check for required headers
     if (!headers.includes('fromContent') || !headers.includes('toContent')) {
         console.error("Critical Parsing Error: The script expects 'fromContent' and 'toContent' keys.");
         return [];
     }
 
     const data = [];
-    // Regex to handle CSV values that contain commas inside quotes
     const csvRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/; 
 
     for (let i = 1; i < lines.length; i++) {
@@ -103,7 +131,7 @@ function parseCSV(csvText) {
                 const cleanValue = value.replace(/^"|"$/g, '').trim(); 
                 entry[headers[index]] = cleanValue; 
             });
-            if (entry.fromContent) { // Validate entry based on the English column
+            if (entry.fromContent) {
                 entry.id = i; 
                 data.push(entry);
             }
@@ -113,7 +141,7 @@ function parseCSV(csvText) {
 }
 
 // ------------------------------------------
-// Theme Functions 
+// Theme Functions (UNCHANGED)
 // ------------------------------------------
 
 function toggleTheme() {
@@ -150,11 +178,17 @@ function loadTheme() {
 // Table & Description Management
 // ------------------------------------------
 
-function handleWordSelect(entry, selectedRow) {
+/**
+ * Handles selection of a grouped English word.
+ * @param {Array} groupedEntries - Array of all sheet entries for the selected word.
+ * @param {HTMLElement} selectedRow - The table row element that was clicked.
+ */
+function handleWordSelect(groupedEntries, selectedRow) {
     const tbody = document.getElementById(TABLE_BODY_ID);
     const backButton = document.getElementById(BACK_BUTTON_ID);
     const tableContainer = document.getElementById('bookTableContainer');
 
+    // Hide all rows except the selected one
     Array.from(tbody.children).forEach(row => {
         row.classList.remove('selected-row');
         if (row !== selectedRow) {
@@ -172,17 +206,32 @@ function handleWordSelect(entry, selectedRow) {
     const exampleElement = document.getElementById(EXAMPLE_TEXT_ID); 
     const area = document.getElementById(DESCRIPTION_AREA_ID);
 
-    // Use 'fromContent' (English) for the main title
-    titleElement.textContent = `📜 ${entry.fromContent}`;
+    const mainWord = groupedEntries[0].fromContent;
+    titleElement.innerHTML = `📜 ${mainWord} <button class="copy-button" onclick="copyWord('${mainWord}')">Copy</button>`;
     
-    // Use 'toContent' (Malayalam) as the main definition body
-    let definition = entry.toContent || "No Malayalam translation available."; 
-    definitionElement.textContent = definition;
+    // Aggregate all Malayalam meanings and types
+    let allMeanings = [];
+    let allTypes = [];
     
-    // Use 'types' as the secondary detail (Example)
-    let example = entry.types || ""; 
-    if (example) {
-        exampleElement.textContent = example;
+    groupedEntries.forEach(entry => {
+        if (entry.toContent) {
+            allMeanings.push(entry.toContent);
+        }
+        if (entry.types) {
+            allTypes.push(entry.types);
+        }
+    });
+
+    // Display all meanings in an unordered list
+    definitionElement.innerHTML = allMeanings.length > 0
+        ? `<ul><li>${allMeanings.join('</li><li>')}</li></ul>`
+        : "No Malayalam translations available.";
+    
+    // Display all unique types/details
+    const uniqueTypes = [...new Set(allTypes)].join(', ') || "N/A";
+
+    if (uniqueTypes !== "N/A") {
+        exampleElement.textContent = uniqueTypes;
         exampleElement.style.display = 'block';
     } else {
         exampleElement.style.display = 'none';
@@ -210,10 +259,15 @@ function resetTable() {
     area.style.display = 'none';
     backButton.style.display = 'none';
     
+    // Render the last search results (which are grouped keys)
     renderTable(lastFilterResults);
 }
 
-function renderTable(dataToDisplay) {
+/**
+ * Renders the table using grouped English words.
+ * @param {Array} keysToDisplay - An array of English word strings (the keys of groupedDictionaryData).
+ */
+function renderTable(keysToDisplay) {
     const tableContainer = document.getElementById('bookTableContainer');
     const tbody = document.getElementById(TABLE_BODY_ID);
     const status = document.getElementById(STATUS_MESSAGE_ID);
@@ -222,11 +276,10 @@ function renderTable(dataToDisplay) {
     document.getElementById(DESCRIPTION_AREA_ID).style.display = 'none'; 
     document.getElementById(BACK_BUTTON_ID).style.display = 'none';
 
-    lastFilterResults = dataToDisplay; 
+    lastFilterResults = keysToDisplay; 
 
-    if (dataToDisplay.length === 0) {
+    if (keysToDisplay.length === 0) {
         tableContainer.style.display = 'none';
-        // Updated status message for exact match logic
         status.textContent = "❌ No entries found matching your search term exactly.";
         status.className = 'error';
         return;
@@ -234,31 +287,38 @@ function renderTable(dataToDisplay) {
     
     tableContainer.style.display = 'block';
 
-    dataToDisplay.forEach(entry => {
+    keysToDisplay.forEach(englishWord => {
+        const entryGroup = groupedDictionaryData[englishWord];
+        if (!entryGroup) return; // Skip if the group is somehow missing
+
         const row = tbody.insertRow();
         row.style.cursor = 'pointer'; 
         
+        // Use an anonymous function to ensure 'entryGroup' is correctly captured
         row.addEventListener('click', () => {
-            handleWordSelect(entry, row);
+            handleWordSelect(entryGroup, row);
         });
 
-        DISPLAY_COLUMNS.forEach(col => {
-            const cell = row.insertCell();
-            let value = entry[col.key] || '';
-            cell.textContent = value;
-        });
+        // 1. English Word (fromContent)
+        const englishCell = row.insertCell();
+        englishCell.textContent = englishWord;
+
+        // 2. Malayalam Meanings (Combined)
+        const malayalamCell = row.insertCell();
+        // Create a summary of the Malayalam meanings for the table view
+        const meanings = entryGroup.map(e => e.toContent).filter(m => m).join(' / ');
+        malayalamCell.textContent = meanings;
     });
 
     const currentQuery = document.getElementById(SEARCH_INPUT_ID).value.toLowerCase().trim();
     if (currentQuery) {
-        status.textContent = `🔎 ${dataToDisplay.length} exact match(es) found. Click a row to view the translation details.`;
+        status.textContent = `🔎 ${keysToDisplay.length} exact match(es) found. Click a row for all meanings.`;
         status.className = 'info';
     }
 }
 
 /**
- * Filters dictionaryData based on the search query.
- * USES STRICT EQUALITY (===) for exact matching.
+ * Filters dictionaryData based on the search query using EXACT MATCHING.
  */
 function filterData(query) {
     const queryLower = query.toLowerCase().trim();
@@ -277,16 +337,23 @@ function filterData(query) {
         return;
     }
 
-    const filtered = dictionaryData.filter(entry => {
-        // Strict, case-insensitive, exact match on English content
-        const fromMatch = entry.fromContent && entry.fromContent.toLowerCase() === queryLower;
-        // Strict, case-insensitive, exact match on Malayalam content
-        const toMatch = entry.toContent && entry.toContent.toLowerCase() === queryLower;
-        
-        return fromMatch || toMatch;
+    // Find the English word keys that match the search query exactly
+    const filteredKeys = Object.keys(groupedDictionaryData).filter(englishWord => {
+        // Strict, case-insensitive, exact match on English word
+        if (englishWord.toLowerCase() === queryLower) {
+            return true;
+        }
+
+        // If not matched in English, check if the query matches any Malayalam meaning exactly
+        const entries = groupedDictionaryData[englishWord];
+        const malayalamMatch = entries.some(entry => {
+            return entry.toContent && entry.toContent.toLowerCase() === queryLower;
+        });
+
+        return malayalamMatch;
     });
 
-    renderTable(filtered);
+    renderTable(filteredKeys);
 }
 
 
@@ -297,6 +364,9 @@ function filterData(query) {
 function registerEventListeners() {
     document.getElementById(THEME_TOGGLE_ID).addEventListener('click', toggleTheme);
     document.getElementById(BACK_BUTTON_ID).addEventListener('click', resetTable);
+    
+    // Make copyWord function globally available for use in the HTML string inside handleWordSelect
+    window.copyWord = copyWord; 
     
     const searchInput = document.getElementById(SEARCH_INPUT_ID);
     searchInput.addEventListener('input', debounce((e) => {
@@ -323,10 +393,13 @@ async function init() {
     dictionaryData = parseCSV(csvText); 
     
     if (dictionaryData.length > 0) {
+        // ** NEW STEP: Group data immediately after parsing **
+        groupedDictionaryData = groupDataByEnglishWord(dictionaryData);
+        
         document.getElementById(TABLE_BODY_ID).innerHTML = ''; 
         tableContainer.style.display = 'none';
 
-        status.textContent = `Successfully loaded ${dictionaryData.length} entries. Start typing above to search.`;
+        status.textContent = `Successfully loaded ${Object.keys(groupedDictionaryData).length} unique English words. Start typing above to search.`;
         status.className = 'info';
     } else {
         status.textContent = `⚠️ Failed to parse dictionary entries. Verify your sheet has 'from_content' and 'to_content' headers.`;
