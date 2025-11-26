@@ -15,12 +15,12 @@ const THEME_TOGGLE_ID = 'themeToggle';
 const BACK_BUTTON_ID = 'backButton';
 const THEME_STORAGE_KEY = 'dictionaryTheme'; 
 
-// Define standardized display columns (assuming sheet headers are Word, Synonyms, Language)
-// These keys MUST match the normalized header output (e.g., "Word" becomes 'word')
+// --- UPDATED COLUMN CONFIGURATION ---
+// 1. We change the 'key' to match your normalized headers (from_content -> fromContent, to_content -> toContent).
+// 2. We change the 'label' to display "English" and "Malayalam".
 const DISPLAY_COLUMNS = [
-    { key: 'word', label: 'Word' },
-    { key: 'synonyms', label: 'Synonyms (Preview)' },
-    { key: 'language', label: 'Language' },
+    { key: 'fromContent', label: 'English' }, 
+    { key: 'toContent', label: 'Malayalam' }, 
 ];
 
 let dictionaryData = []; 
@@ -39,19 +39,25 @@ function debounce(func, delay) {
 }
 
 /**
- * Normalizes a header string into camelCase for reliable object keys.
- * This function is critical for matching sheet headers to JS keys.
+ * Normalizes a header string (e.g., "from_content") into camelCase (e.g., "fromContent").
+ * The 'word' key used for the main entry and search logic is now mapped to 'fromContent'.
  */
 function normalizeHeader(header) {
     if (!header) return '';
-    // Strip quotes, trim, convert to lower case, and remove all non-alphanumeric/whitespace
-    return header
-        .replace(/"/g, '') // Remove quotes
-        .replace(/[^a-zA-Z0-9\s]/g, '') // Remove punctuation
+    
+    // 1. Remove quotes, remove punctuation/special chars, trim, and convert to lower case
+    let normalized = header
+        .replace(/"/g, '')
+        .replace(/[^a-zA-Z0-9_\s]/g, '') // Keep underscores for now
         .trim()
-        .toLowerCase()
-        .replace(/\s(.)/g, (match, char) => char.toUpperCase()) // CamelCase remaining spaces
-        .replace(/\s/g, ''); // Remove any final spaces
+        .toLowerCase();
+
+    // 2. Convert snake_case/space to camelCase
+    normalized = normalized.replace(/(_\w)|(\s\w)/g, (match) => {
+        return match.toUpperCase().replace(/[_ ]/g, '');
+    });
+    
+    return normalized;
 }
 
 
@@ -80,23 +86,21 @@ async function fetchCSVData() {
  * Parses the CSV text into an array of dictionary objects, using normalized keys.
  */
 function parseCSV(csvText) {
-    // Note: The CSV from Google Sheets is typically double-quoted, so we handle that.
     const lines = csvText.trim().split('\n');
     if (lines.length === 0) return [];
     
-    // Find the headers (first line)
     const rawHeaders = lines[0].split(',').map(header => header.replace(/"/g, '').trim());
     const headers = rawHeaders.map(normalizeHeader);
     
-    // Check if critical headers are present (helpful for debugging)
-    if (!headers.includes('word') || !headers.includes('definition')) {
-        console.error("Critical Error: 'word' or 'definition' columns not found after normalization.");
-        // This is where the error likely occurs if the sheet headers are named differently.
+    // --- CRITICAL CHECK FOR NEW HEADERS ---
+    // The script previously used 'word' and 'definition'. We must now use 'fromContent' and 'toContent'.
+    // We will map 'fromContent' to the primary search key.
+    if (!headers.includes('fromContent') || !headers.includes('toContent')) {
+        console.error("Critical Error: 'fromContent' or 'toContent' columns not found after normalization. Check your Sheet headers.");
         return [];
     }
 
     const data = [];
-    // Regex to split CSV columns while ignoring commas inside double quotes
     const csvRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/; 
 
     for (let i = 1; i < lines.length; i++) {
@@ -108,7 +112,8 @@ function parseCSV(csvText) {
                 const cleanValue = value.replace(/^"|"$/g, '').trim(); 
                 entry[headers[index]] = cleanValue; 
             });
-            if (entry.word) { // Ensure the entry has a word before pushing
+            // Use 'fromContent' as the key to validate the entry
+            if (entry.fromContent) { 
                 entry.id = i; 
                 data.push(entry);
             }
@@ -177,13 +182,15 @@ function handleWordSelect(entry, selectedRow) {
     const exampleElement = document.getElementById(EXAMPLE_TEXT_ID); 
     const area = document.getElementById(DESCRIPTION_AREA_ID);
 
-    titleElement.textContent = `📜 ${entry.word}`;
+    // Use 'fromContent' for the main title
+    titleElement.textContent = `📜 ${entry.fromContent}`;
     
-    let definition = entry.definition || "No definition available."; 
+    // Use 'toContent' as the main definition body
+    let definition = entry.toContent || "No Malayalam translation available."; 
     definitionElement.textContent = definition;
     
-    // Use normalized key 'example'
-    let example = entry.example || "";
+    // Check if 'types' column exists and use it as 'Example'
+    let example = entry.types || ""; 
     if (example) {
         exampleElement.textContent = example;
         exampleElement.style.display = 'block';
@@ -260,6 +267,7 @@ function renderTable(dataToDisplay) {
 
 /**
  * Filters dictionaryData based on the search query.
+ * Now searches against 'fromContent' (English) and 'toContent' (Malayalam).
  */
 function filterData(query) {
     const queryLower = query.toLowerCase().trim();
@@ -279,10 +287,12 @@ function filterData(query) {
     }
 
     const filtered = dictionaryData.filter(entry => {
-        // Search against the word and synonyms fields
-        const wordMatch = entry.word && entry.word.toLowerCase().includes(queryLower);
-        const synonymMatch = entry.synonyms && entry.synonyms.toLowerCase().includes(queryLower);
-        return wordMatch || synonymMatch;
+        // Search against the English content
+        const fromMatch = entry.fromContent && entry.fromContent.toLowerCase().includes(queryLower);
+        // Search against the Malayalam content
+        const toMatch = entry.toContent && entry.toContent.toLowerCase().includes(queryLower);
+        
+        return fromMatch || toMatch;
     });
 
     renderTable(filtered);
@@ -325,11 +335,10 @@ async function init() {
         document.getElementById(TABLE_BODY_ID).innerHTML = ''; 
         tableContainer.style.display = 'none';
 
-        status.textContent = `Successfully loaded ${dictionaryData.length} words. Start typing above to search.`;
+        status.textContent = `Successfully loaded ${dictionaryData.length} entries. Start typing above to search in English or Malayalam.`;
         status.className = 'info';
     } else {
-        // This likely means the headers are wrong, or the sheet is truly empty
-        status.textContent = `⚠️ Failed to parse dictionary entries. Please verify the column headers in your Google Sheet (expecting 'Word', 'Definition', etc.).`;
+        status.textContent = `⚠️ Failed to parse dictionary entries. Verify your sheet has 'from_content' and 'to_content' headers.`;
         status.className = 'error';
     }
 }
