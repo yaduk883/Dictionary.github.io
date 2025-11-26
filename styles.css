@@ -220,3 +220,45 @@ body.dark-theme .error { background-color: #5d1717; color: #ff8a80; }
     margin-bottom: 5px;
     line-height: 1.5;
 }
+/* Add/Modify this section in your styles.css */
+
+/* Style for the general English word copy button */
+.copy-word-button {
+    font-size: 0.8em; /* Slightly smaller */
+    padding: 4px 8px;
+    margin-left: 10px;
+}
+
+/* Style for the copy button next to each Malayalam meaning */
+.copy-meaning-button {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    padding: 0 4px; /* Minimal padding */
+    margin-left: 8px;
+    font-size: 1em; 
+    cursor: pointer;
+    opacity: 0.6; /* Make it subtle */
+    transition: opacity 0.2s;
+}
+
+.copy-meaning-button:hover {
+    opacity: 1;
+    background: none;
+    color: var(--primary-color);
+}
+
+/* Ensure list items for definitions are styled nicely (Already done, but repeating for context) */
+#definitionText ul {
+    list-style: disc;
+    padding-left: 20px;
+    margin-top: 10px;
+}
+
+#definitionText ul li {
+    margin-bottom: 5px;
+    line-height: 1.5;
+    /* Ensure the button aligns well with the text */
+    display: flex;
+    align-items: center; 
+}
