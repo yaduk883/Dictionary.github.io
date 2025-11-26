@@ -3,22 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>മലയാളം നിഘണ്ടു</title>
+    <title>📖 Yadu's Dictionary</title>
     
     <link rel="icon" type="image/png" href="favicon.png"> 
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>മലയാളം നിഘണ്ടു</h1>
+        <h1>📖 Yadu's Dictionary</h1>
         
-        <div class="controls">
+        <div class="controls-bar">
             <button id="themeToggle" class="theme-button">☀️ Switch to Dark</button>
-            <input type="text" id="searchInput" placeholder="🔍 തിരയുക...">
+            <button id="contactButton" class="contact-button">📞 Contact</button>
+        </div>
+        
+        <div id="searchArea" class="controls">
+            <input type="text" id="searchInput" placeholder="🔍 Search for a Word...">
         </div>
 
         <p id="statusMessage" class="info">Start typing above to search for a word.</p>
 
+        <div id="contactArea" class="description-box contact-box" style="display:none;">
+            <h3>📬 Contact</h3>
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=yaduk883@gmail.com" target="_blank">
+                <button class="contact-link-button email-button">📧 Email</button>
+            </a>
+            <a href="https://github.com/yaduk883" target="_blank">
+                <button class="contact-link-button github-button">🐙 GitHub</button>
+            </a>
+            <a href="https://instagram.com/ig.yadu/" target="_blank">
+                <button class="contact-link-button instagram-button">📸 Instagram</button>
+            </a>
+            <button onclick="contactMe()" class="contact-link-button close-button">Close</button>
+        </div>
+        
         <div id="descriptionArea" class="description-box" style="display:none;">
             <h3 id="descriptionTitle"></h3>
             <p id="definitionText"></p>
