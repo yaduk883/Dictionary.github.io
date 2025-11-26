@@ -191,3 +191,32 @@ body.dark-theme .error { background-color: #5d1717; color: #ff8a80; }
 .description-box .back-button {
     margin-top: 15px;
 }
+/* --- Add this block to your styles.css --- */
+.copy-button {
+    background: none;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    padding: 4px 8px;
+    margin-left: 10px;
+    font-size: 0.8em;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.copy-button:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Ensure list items for definitions are styled nicely */
+#definitionText ul {
+    list-style: disc;
+    padding-left: 20px;
+    margin-top: 10px;
+}
+
+#definitionText ul li {
+    margin-bottom: 5px;
+    line-height: 1.5;
+}
